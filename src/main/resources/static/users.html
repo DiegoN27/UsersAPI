@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Users</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f0f2f5; }
+        header { background-color: #1e90ff; padding: 20px; color: white; font-family: Verdana; text-align: center; font-size: 2em; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        nav { background-color: #007bff; color: white; display: flex; justify-content: center; gap: 20px; padding: 10px 0; font-size: 16px; font-weight: bold; }
+        nav a { color: white; text-decoration: none; padding: 8px 15px; border-radius: 5px; }
+        nav a:hover { background-color: #0056b3; }
+        h3 { text-align: center; font-family: Verdana; color: #333; font-size: 1.8em; margin-top: 20px; }
+        #panel { padding: 20px; background: white; margin: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }
+        button { margin: 5px; padding: 10px 15px; border: none; border-radius: 5px; color: white; cursor: pointer; font-size: 14px; }
+        .btn-blue { background-color: #007bff; }
+        .btn-green { background-color: #28a745; }
+        .btn-orange { background-color: #fd7e14; }
+        .btn-gray { background-color: #6c757d; }
+        button:hover { opacity: 0.9; }
+        table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: center; }
+        th { background-color: #e9ecef; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 5px; }
+        #tablaResultados { margin: 20px; }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <i class="fas fa-users"></i> USERS MANAGEMENT
+</header>
+
+<nav>
+    <a href="#" onclick="cambiarEntidad('users')">Users</a>
+    <a href="#" onclick="cambiarEntidad('address')">Address</a>
+</nav>
+
+<h3>Users Control Panel</h3>
+
+<div id="panel">
+    <button class="btn-blue" onclick="listar()">List</button>
+    <button class="btn-blue" onclick="buscarPorId()">Find by ID</button>
+    <hr>
+    <button class="btn-green" onclick="mostrarFormularioActualizar()">Update</button>
+    <button class="btn-gray" onclick="mostrarFormularioEliminar()">Delete</button>
+    <button class="btn-orange" onclick="mostrarFormularioInsertar()">Insert</button>
+</div>
+
+<div id="formularios" style="margin: 20px;"></div>
+<div id="tablaResultados"></div>
+
+<script>
+
+    let entidadActual = "users";
+
+    const URLS = {
+        users: "http://localhost:8081/api/users",
+        address: "http://localhost:8081/api/address"
+    };
+
+    function cambiarEntidad(tipo) {
+        entidadActual = tipo;
+        $("#formularios").html("");
+        $("#tablaResultados").html("");
+        $("h3").text(tipo === "users" ? "Users Control Panel" : "Address Control Panel");
+    }
+
+    function listar() {
+        $.get(URLS[entidadActual], function (data) {
+            mostrarTabla(data);
+        }).fail(() => Swal.fire("Error", "Could not fetch data", "error"));
+    }
+
+    function buscarPorId() {
+        Swal.fire({
+            title: "Find",
+            input: "number",
+            inputLabel: "Enter ID",
+            showCancelButton: true,
+            confirmButtonText: "Search"
+        }).then(result => {
+            if (result.isConfirmed && result.value) {
+                $.get(URLS[entidadActual] + "/" + result.value, function (data) {
+                    mostrarTabla([data]);
+                }).fail(() => Swal.fire("Error", "Not found", "error"));
+            }
+        });
+    }
+
+    function mostrarFormularioInsertar() {
+        if (entidadActual === "users") {
+            $("#formularios").html(`
+                <h4>Insert User</h4>
+                <input type="text" id="firstName" placeholder="First name"><br>
+                <input type="text" id="sureName" placeholder="Last name"><br>
+                <input type="email" id="email" placeholder="Email"><br>
+                <input type="number" id="age" placeholder="Age"><br>
+                <button class="btn-orange" onclick="insertar()">Insert</button>
+            `);
+        } else {
+            $("#formularios").html(`
+                <h4>Insert Address</h4>
+                <input type="text" id="street" placeholder="Street"><br>
+                <input type="text" id="city" placeholder="City"><br>
+                <input type="text" id="country" placeholder="Country"><br>
+                <button class="btn-orange" onclick="insertar()">Insert</button>
+            `);
+        }
+    }
+
+    function insertar() {
+
+        let dto = {};
+
+        if (entidadActual === "users") {
+            dto = {
+                firstName: $("#firstName").val(),
+                sureName: $("#sureName").val(),
+                email: $("#email").val(),
+                age: $("#age").val()
+            };
+        } else {
+            dto = {
+                street: $("#street").val(),
+                city: $("#city").val(),
+                country: $("#country").val()
+            };
+        }
+
+        $.ajax({
+            url: URLS[entidadActual],
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify(dto),
+            success: data => {
+                Swal.fire("Success", "Created successfully", "success");
+                mostrarTabla([data]);
+            },
+            error: () => Swal.fire("Error", "Insert failed", "error")
+        });
+    }
+
+    function mostrarFormularioActualizar() {
+        if (entidadActual === "users") {
+            $("#formularios").html(`
+                <h4>Update User</h4>
+                <input type="number" id="id" placeholder="ID"><br>
+                <input type="text" id="firstName" placeholder="First name"><br>
+                <input type="text" id="sureName" placeholder="Last name"><br>
+                <input type="email" id="email" placeholder="Email"><br>
+                <input type="number" id="age" placeholder="Age"><br>
+                <button class="btn-green" onclick="actualizar()">Update</button>
+            `);
+        } else {
+            $("#formularios").html(`
+                <h4>Update Address</h4>
+                <input type="number" id="id" placeholder="ID"><br>
+                <input type="text" id="street" placeholder="Street"><br>
+                <input type="text" id="city" placeholder="City"><br>
+                <input type="text" id="country" placeholder="Country"><br>
+                <button class="btn-green" onclick="actualizar()">Update</button>
+            `);
+        }
+    }
+
+    function actualizar() {
+
+        const id = $("#id").val();
+        let dto = {};
+
+        if (entidadActual === "users") {
+            dto = {
+                firstName: $("#firstName").val(),
+                sureName: $("#sureName").val(),
+                email: $("#email").val(),
+                age: $("#age").val()
+            };
+        } else {
+            dto = {
+                street: $("#street").val(),
+                city: $("#city").val(),
+                country: $("#country").val()
+            };
+        }
+
+        $.ajax({
+            url: URLS[entidadActual] + "/" + id,
+            method: "PUT",
+            contentType: "application/json",
+            data: JSON.stringify(dto),
+            success: data => {
+                Swal.fire("Success", "Updated successfully", "success");
+                mostrarTabla([data]);
+            },
+            error: () => Swal.fire("Error", "Update failed", "error")
+        });
+    }
+
+    function mostrarFormularioEliminar() {
+        $("#formularios").html(`
+            <h4>Delete</h4>
+            <input type="number" id="id" placeholder="ID"><br>
+            <button class="btn-gray" onclick="eliminar()">Delete</button>
+        `);
+    }
+
+    function eliminar() {
+        const id = $("#id").val();
+
+        $.ajax({
+            url: URLS[entidadActual] + "/" + id,
+            method: "DELETE",
+            success: msg => Swal.fire("Success", msg, "success"),
+            error: () => Swal.fire("Error", "Delete failed", "error")
+        });
+    }
+
+    function mostrarTabla(data) {
+
+        let html = "<table><tr>";
+
+        if (entidadActual === "users") {
+            html += `
+                <th>ID</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Email</th>
+                <th>Age</th>
+            </tr>
+            `;
+            data.forEach(u => {
+                html += `
+                <tr>
+                    <td>${u.id}</td>
+                    <td>${u.firstName}</td>
+                    <td>${u.sureName}</td>
+                    <td>${u.email}</td>
+                    <td>${u.age}</td>
+                </tr>
+                `;
+            });
+        } else {
+            html += `
+                <th>ID</th>
+                <th>Street</th>
+                <th>City</th>
+                <th>Country</th>
+            </tr>
+            `;
+            data.forEach(a => {
+                html += `
+                <tr>
+                    <td>${a.id}</td>
+                    <td>${a.street}</td>
+                    <td>${a.city}</td>
+                    <td>${a.country}</td>
+                </tr>
+                `;
+            });
+        }
+
+        html += "</table>";
+        $("#tablaResultados").html(html);
+    }
+
+</script>
+
+
+</body>
+</html>
